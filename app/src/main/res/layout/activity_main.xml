@@ -1,0 +1,110 @@
+
+
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:alignmentMode="alignBounds"
+    android:orientation="vertical"
+    android:padding="16dp"
+    android:useDefaultMargins="true"
+    app:columnCount="1" >
+
+    <!--<TextView-->
+        <!--android:id="@+id/from_label"-->
+        <!--app:layout_gravity="fill_horizontal"-->
+        <!--android:text="from"-->
+        <!--android:textColor="?android:textColorSecondary" />-->
+
+    <AutoCompleteTextView
+        android:id="@+id/from"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        app:layout_gravity="fill_horizontal"
+        android:completionThreshold="3" />
+
+    <!--<TextView-->
+        <!--android:id="@+id/to_label"-->
+        <!--app:layout_gravity="fill_horizontal"-->
+        <!--android:text="to"-->
+        <!--android:textColor="?android:textColorSecondary" />-->
+
+    <AutoCompleteTextView
+        android:id="@+id/to"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        app:layout_gravity="fill_horizontal"
+        android:completionThreshold="3" />
+
+    <Button
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/load_directions"
+        app:layout_gravity="fill_horizontal"
+        android:text="load_directions" />
+
+
+
+
+    <RadioGroup
+        android:id="@+id/radiogroup"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:visibility="gone">
+        <RadioButton android:id="@+id/radio_driving"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="driving"
+            android:checked="true"
+            android:onClick="onRadioButtonClicked"/>
+        <RadioButton android:id="@+id/radio_walking"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="walking"
+            android:onClick="onRadioButtonClicked"/>
+        <RadioButton android:id="@+id/radio_bicycling"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="bicycling"
+            android:onClick="onRadioButtonClicked"/>
+        <RadioButton android:id="@+id/radio_transit"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="transit"
+            android:onClick="onRadioButtonClicked"/>
+    </RadioGroup>
+
+    <fragment
+        android:id="@+id/map"
+        android:name="com.google.android.gms.maps.SupportMapFragment"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent">
+    </fragment>
+
+
+
+
+
+
+
+
+    <TextView
+        android:id="@+id/line"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        />
+
+
+
+    <TextView
+        android:id="@+id/json"
+        android:layout_width="fill_parent"
+        android:layout_height="wrap_content"
+        android:visibility="gone"
+        />
+
+</LinearLayout>
+
