@@ -1,10 +1,10 @@
 package cybulskij.nazar.avoidpoints;
 
 import android.graphics.Color;
-import android.location.Address;
-import android.location.Geocoder;
+import android.location.Location;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
+import android.util.Log;
 import android.view.View;
 import android.widget.AutoCompleteTextView;
 import android.widget.Button;
@@ -17,6 +17,7 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.LatLngBounds;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
 import com.google.gson.Gson;
@@ -27,26 +28,23 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.lang.reflect.Type;
-import java.math.BigDecimal;
-import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.List;
 
 
 import cybulskij.nazar.avoidpoints.adapter.AutoCompleteEventLocationAdapter;
-import cybulskij.nazar.avoidpoints.model.Location;
 import cybulskij.nazar.avoidpoints.model.Step;
 import cybulskij.nazar.avoidpoints.network.DirectionService;
 import cybulskij.nazar.avoidpoints.network.ServiceGenerator;
-import cybulskij.nazar.avoidpoints.util.DistanceUtil;
 import retrofit.Callback;
 import retrofit.RetrofitError;
 import retrofit.client.Response;
 import retrofit.mime.TypedByteArray;
 
-public class MainActivity extends FragmentActivity{
+public class MainActivity extends FragmentActivity {
+
+    public  static final   double MINDISTANCE = 100.0;
 
 
     AutoCompleteTextView from;
@@ -55,9 +53,6 @@ public class MainActivity extends FragmentActivity{
     SupportMapFragment mapFragment;
     GoogleMap map;
     TextView mJsonTextView;
-
-    Button  prev;
-    Bundle next;
     int currentposution = 0;
 
     TextView mLine;
@@ -72,9 +67,9 @@ public class MainActivity extends FragmentActivity{
 
     int []colors = {Color.BLACK,Color.BLUE,Color.GRAY,Color.CYAN,Color.GREEN,Color.RED,Color.MAGENTA,Color.YELLOW};
 
-
-
-
+    Double[] arrayMinDistance;
+    Marker marker = null;
+    Location  markerLocation = new Location("");
 
 
 
@@ -93,6 +88,22 @@ public class MainActivity extends FragmentActivity{
         if (map == null) {
             finish();
             return;
+        }else{
+            map.setOnMapClickListener(new GoogleMap.OnMapClickListener() {
+                @Override
+                public void onMapClick(LatLng latLng) {
+                    MarkerOptions markerOptions = new MarkerOptions();
+                    markerOptions.position(latLng);
+                    if (marker != null) {
+                        marker.remove();
+                    }
+                    map.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+                    marker = map.addMarker(markerOptions);
+                    markerLocation.setLatitude(latLng.latitude);
+                    markerLocation.setLongitude(latLng.longitude);;
+
+                }
+            });
         }
         
         from.setAdapter(new AutoCompleteEventLocationAdapter(this, BOUNDS_GREATER_MOSCOW));
@@ -103,6 +114,12 @@ public class MainActivity extends FragmentActivity{
         mLoadDirections.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+
+                if (marker==null){
+                   Toast.makeText(getApplicationContext(),"please  add marker :)",Toast.LENGTH_SHORT).show();
+                    return;
+
+                }
                 String tostr =to.getText().toString();
                 String fromstr =from.getText().toString();
 
@@ -112,6 +129,12 @@ public class MainActivity extends FragmentActivity{
                     public void success(Response response, Response response2) {
                         try {
                             map.clear();
+                            if (markerLocation!=null){
+                                MarkerOptions markerOptions = new MarkerOptions();
+                                markerOptions.position(new LatLng(markerLocation.getLatitude(), markerLocation.getLongitude()));
+                                marker = map.addMarker(markerOptions);;
+
+                            }
 
                             JSONObject object = new JSONObject(new String(((TypedByteArray) response.getBody()).getBytes()));
                             Type listType = new TypeToken<List<Step>>(){}.getType();
@@ -121,6 +144,7 @@ public class MainActivity extends FragmentActivity{
                             JSONObject leg ;
                             JSONArray steps ;
                             Gson gson = new Gson();
+                            allRoutes.clear();
                             for (int i =0;i<results.length();i++){
                                  route = results.optJSONObject(i);
                                  legs = route.optJSONArray("legs");
@@ -130,9 +154,34 @@ public class MainActivity extends FragmentActivity{
                                  stepslist = (ArrayList<Step>) gson.fromJson(jsonOutput, listType);
                                  allRoutes.add(stepslist);
                             }
-                            currentposution = 0;
-                            if (allRoutes.size()>currentposution) {
+
+
+
+                            arrayMinDistance = new Double[results.length()];
+                            for (int i=0;i<results.length();i++){
+                                arrayMinDistance[i]=40000.0*1000.0;
+                            }
+
+
+                            findBestRoute(allRoutes);
+
+                            ArrayList<ArrayList<Step>> tempAllRoutes=new ArrayList<ArrayList<Step>>();
+                            tempAllRoutes.clear();
+
+                            int posution = 0;
                                 for (ArrayList<Step> temp:allRoutes){
+                                    if (arrayMinDistance[posution]>MINDISTANCE) {
+                                        tempAllRoutes.add(temp);
+                                    }
+
+                                    posution++;
+                                }
+
+
+
+                            currentposution = 0;
+                            if (tempAllRoutes.size()>currentposution) {
+                                for (ArrayList<Step> temp:tempAllRoutes){
                                     onDrawRoutes(temp,currentposution);
                                     currentposution++;
                                 }
@@ -163,31 +212,54 @@ public class MainActivity extends FragmentActivity{
     }
 
     public void onDrawRoute(Step step, int currentposution){
-
         List<LatLng> mPoints = PolyUtil.decode(step.getPolyline().getPoints());
         PolylineOptions line;
-
         int color = currentposution%colors.length;
-
-             line = new PolylineOptions()
+        line = new PolylineOptions()
                     .color(colors[color])
                     .width(5)
                     .visible(true)
                     .zIndex(30);
-
-
-
         LatLngBounds.Builder latLngBuilder = new LatLngBounds.Builder();
         for (int i = 0; i < mPoints.size(); i++) {
             line.add(mPoints.get(i));
             latLngBuilder.include(mPoints.get(i));
         }
         map.addPolyline(line);
-        int size = getResources().getDisplayMetrics().widthPixels;
-        LatLngBounds latLngBounds = latLngBuilder.build();
-        CameraUpdate track = CameraUpdateFactory.newLatLngBounds(latLngBounds, size, size, 25);
-        map.moveCamera(track);
     }
+
+    private   void  findBestRoute(ArrayList<ArrayList<Step>> allRoutes){
+
+        int posution = 0;
+        if (allRoutes.size()>posution) {
+            for (ArrayList<Step> temp:allRoutes){
+                findMin(temp, posution);
+                posution++;
+            }
+        }
+
+    }
+
+    public void findMin(ArrayList<Step> steps, int currentposution){
+        double temdistance;
+        Location location=new Location("");
+
+        for (Step tempstep:steps){
+            List<LatLng> mPoints = PolyUtil.decode(tempstep.getPolyline().getPoints());
+            for (LatLng temp: mPoints) {
+                location.setLatitude(temp.latitude);
+                location.setLongitude(temp.longitude);
+                temdistance = markerLocation.distanceTo(location);
+                if(temdistance<arrayMinDistance[currentposution]){
+                    arrayMinDistance[currentposution] = temdistance;
+                }
+            }
+        }
+
+        Log.i("DS",arrayMinDistance[currentposution]+"");
+
+    }
+
 
 
 }
